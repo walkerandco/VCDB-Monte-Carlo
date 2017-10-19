@@ -1,0 +1,30 @@
+{
+  "name": "vcdb-monte-carlo",
+  "version": "1.0.0",
+  "description": "A monte carlo simulation using the vcdb cybersecurity incident dataset and the verisdb-analyst analytics application REST API to perform MapReduce on the data. Scripts simulates attack modes to explore possibly attack mode distributions.",
+  "main": "monte.js",
+  "scripts": {
+    "test": "grunt nodeunit"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/walkerandco/VCDB-Monte-Carlo.git"
+  },
+  "keywords": [
+    "vcdb",
+    "cybersecurity",
+    "veris",
+    "analyst",
+    "monte",
+    "carlo",
+    "risk",
+    "modelling",
+    "statistics"
+  ],
+  "author": "Steven Walker-Roberts",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/walkerandco/VCDB-Monte-Carlo/issues"
+  },
+  "homepage": "https://github.com/walkerandco/VCDB-Monte-Carlo#readme"
+}
