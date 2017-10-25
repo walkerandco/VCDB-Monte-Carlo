@@ -8,7 +8,7 @@
  * @version v0.0.1
  * @copyright Copyright (C) Steven Walker-Roberts 2017. MIT License.
  *
- * @module vcdbMonteCarlo
+ * @class vcdbMonteCarlo
  */
 
  ///////////////
@@ -76,7 +76,7 @@ exports.getData = function getData(path) {
 	return new Promise((resolve, reject) => {
 		try {
 		//get the vcdb data
-		request('http://h2.net.walkerroberts.co.uk:15002/'+path, (err, res, body) => {
+		request(process.argv[3]+path, (err, res, body) => {
 			//parse raw data
 			if (err) reject(console.error((new Date()).toISOString()+" Error: "+err.message));
 			if (!err && res.statusCode == 200) {
@@ -103,7 +103,7 @@ exports.postAggregationQuery = function postAggregationQuery(path, query){
 	return new Promise((resolve, reject) => {
 		try {
 			request({
-			uri: 'http://h2.net.walkerroberts.co.uk:15002/'+path,
+			uri: process.argv[3]+path,
 			method: 'POST',
 			body: query,
 			json: true

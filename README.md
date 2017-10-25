@@ -12,7 +12,7 @@ npm install --save vcdb-monte-carlo
 To use this tool, ensure that verisdb-analyst is running in the background and simply run the following command:
 
 ```
->node monte.js [number of times to run simulation]
+>node monte.js [url of verisdb-analyst] [number of times to run simulation]
 ```
 This simulation requires considerable computing power to do quickly, so on a standard personal computer this will be slow.
 
