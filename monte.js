@@ -298,7 +298,7 @@ exports.configureScenario = async function configureScenario(actor, date){
 }
 
 /**
- * Draws a scenario together from possible probabilities.
+ * Runs trials for the specified number of times.
  * @function vcdbMonteCarlo#runTrials
  * @param {number} times - The number of times to run the trial.
  * @returns {number} - Success status.
