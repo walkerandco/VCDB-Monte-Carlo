@@ -1,6 +1,6 @@
 {
   "name": "vcdb-monte-carlo",
-  "version": "1.0.5",
+  "version": "1.0.6",
   "description": "A monte carlo simulation using the vcdb cybersecurity incident dataset and the verisdb-analyst analytics application REST API to perform MapReduce on the data. Scripts simulates attack modes to explore possibly attack mode distributions.",
   "main": "monte.js",
   "scripts": {
