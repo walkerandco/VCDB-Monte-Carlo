@@ -4,7 +4,7 @@
   "description": "A monte carlo simulation using the vcdb cybersecurity incident dataset and the verisdb-analyst analytics application REST API to perform MapReduce on the data. Scripts simulates attack modes to explore possibly attack mode distributions.",
   "main": "monte.js",
   "scripts": {
-    "test": "grunt nodeunit"
+    "test": "nodeunit tests/test-main.js"
   },
   "repository": {
     "type": "git",
@@ -26,5 +26,14 @@
   "bugs": {
     "url": "https://github.com/walkerandco/VCDB-Monte-Carlo/issues"
   },
-  "homepage": "https://github.com/walkerandco/VCDB-Monte-Carlo#readme"
+  "homepage": "https://github.com/walkerandco/VCDB-Monte-Carlo#readme",
+  "dependencies": {
+    "fs.promised": "^3.0.0",
+    "lodash": "^4.17.4",
+    "mersennetwister": "^0.2.3",
+    "nodeunit": "^0.11.1",
+    "request": "^2.83.0",
+    "request-promise-native": "^1.0.5"
+  },
+  "devDependencies": {}
 }

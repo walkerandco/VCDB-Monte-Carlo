@@ -1,0 +1,319 @@
+"use strict";
+//////////////////////
+// 
+/**
+ * A monte carlo simulator for VCDB data. Creates a risk profile using an existing vcdb dataset.
+ *
+ * @author Steven Walker-Roberts
+ * @version v0.0.1
+ * @copyright Copyright (C) Steven Walker-Roberts 2017. MIT License.
+ *
+ * @module vcdbMonteCarlo
+ */
+
+ ///////////////
+// Debug Mode
+/** 
+ * Debug mode flag.
+ * @global
+ */
+var debug = 0;
+
+//////////////
+// Requires
+//core node modules
+/** 
+ * @requires http
+ * @external http
+ * @see {@link https://nodejs.org/api/http.html}
+ */
+const http = require('http');
+
+/** 
+ * @requires fs.promised
+ * @external fs.promised
+ * @see {@link https://www.npmjs.com/package/fs.promised.html}
+ */
+const fs = require('fs.promised');
+
+/** 
+ * @requires assert
+ * @external assert
+ * @see {@link https://nodejs.org/api/assert.html}
+ */
+const assert = require('assert');
+
+/** 
+ * @requires request
+ * @external request
+ * @see {@link https://github.com/request/request}
+ */
+const request = require('request');
+
+/** 
+ * @requires lodash
+ * @external lodash
+ * @see {@link https://www.npmjs.com/package/lodash}
+ */
+const _ = require('lodash');
+
+/** 
+ * @requires mersennetwister
+ * @external mersennetwister
+ * @see {@link https://www.npmjs.com/package/mersennetwister}
+ */
+const MersenneTwister = require('mersennetwister');
+
+/////////
+// Main
+/**
+ * Gets the numerical data from VerisDB Analyst.
+ * @function vcdbMonteCarlo#getData
+ * @param {string} path - API path on which to make the request.
+ * @returns {object} - An object containing incident data.
+ */
+exports.getData = function getData(path) {
+	return new Promise((resolve, reject) => {
+		try {
+		//get the vcdb data
+		request('http://h2.net.walkerroberts.co.uk:15002/'+path, (err, res, body) => {
+			//parse raw data
+			if (err) reject(console.error((new Date()).toISOString()+" Error: "+err.message));
+			if (!err && res.statusCode == 200) {
+				var data = JSON.parse(body);
+				if(debug) console.log((new Date()).toISOString()+" Data received.");
+				if(debug) console.log(data);
+				resolve(data);
+			} //end of if
+		}) //end of request
+		} catch(e) { //end of try
+			reject(console.error((new Date()).toISOString()+" Error: "+err.message));
+		} //end of catch
+	}) //end of promise
+} //end of getData function
+
+/**
+ * Gets the numerical data from VerisDB Analyst.
+ * @function vcdbMonteCarlo#postAggregationQuery
+ * @param {string} path - The path of the query API.
+ * @param {object} query - Query objects containing match, group, sort and unwind pattern.
+ * @returns {object} - An object containing incident data.
+ */
+exports.postAggregationQuery = function postAggregationQuery(path, query){
+	return new Promise((resolve, reject) => {
+		try {
+			request({
+			uri: 'http://h2.net.walkerroberts.co.uk:15002/'+path,
+			method: 'POST',
+			body: query,
+			json: true
+			},
+			async (err, res, body) => {
+				if (err) reject(console.error((new Date()).toISOString()+" Error: "+err.message));
+				if (!err && res.statusCode == 200) {
+						if(debug) console.log((new Date()).toISOString()+" Data received.");
+						if(debug) console.log(body);
+						resolve(body);
+				} //end of if
+			})//end of request
+		} catch(e) { //end of try
+			reject(console.error((new Date()).toISOString()+" Error: "+err.message));
+		} //end of catch
+	}) //end of request
+} //end of postAggregationQuery function
+
+/**
+ * Creates a probability distribution from aggregated MongoDB data.
+ * @function vcdbMonteCarlo#computeProbability
+ * @param {object} data - The object containing aggregated data.
+ * @returns {object} - An object containing computed probability key, value arrays.
+ */
+exports.computeProbability = async function computeProbability(keys, values){
+	//create temporary context variables
+	var obj = {}
+	obj.keys = [];
+	obj.values = [];
+	obj.p = [];
+	//calculate probability of each key's value returning
+	if(values){
+		obj.values = values;
+		for(var i in obj.values){
+			obj.keys.push(keys[i]);
+			obj.p.push(obj.values[i]/(_.sum(values)));
+		}//end of for
+	} else {
+		for(var i in keys){
+			obj.keys.push(keys[i]._id);
+			obj.values.push(keys[i].count);
+		}
+		for(var i in obj.keys){
+			obj.p.push(obj.values[i]/_.sum(obj.values));
+		}
+	}
+	if(debug) console.log((new Date()).toISOString()+" Mapped probabilities.");
+	return obj;
+}//end of computeProbability function
+
+/**
+ * Carries out a selection from the range of probabilities using Mersenne-Twiser 53-bit float random.
+ * @function vcdbMonteCarlo#doRandom
+ * @param {array} keys - The array containing the keys mapped by index to probabilities.
+ * @param {array} p - The array containing the keys mapped by index to probabilities.
+ * @returns {object} - The key mapped to the probability invocated at random.
+ */
+exports.doRandom = async function doRandom(keys, p){
+	//create instance of Mersenne-Twister random number generator
+	var mt = new MersenneTwister();
+	var rnd = mt.rndHiRes();
+	//create counter
+	var cp = 0;
+	//create inequalities iteratively to test p against.
+	for(var i in p){
+		for(var x in i){
+			if(i<p.length-1){
+				cp += p[x];
+			}//end of if
+		}//end of for
+		//return the key matching the index of the value falling into the inequality
+		if(rnd > ((i>0) ? cp : 0) && rnd <= ((i<p.length-1)?(cp+p[i]):1)){ 
+			if(debug) console.log((new Date()).toISOString()+" Random key selected.");
+			return keys[i];
+		}
+		else if(p[i] === p.length-1){
+			throw new Error("No probability was selected, an unknown error occured.");
+		}//end of else if
+	}//end of for
+}//end of doRandom function
+
+/**
+ * Draws a scenario together from possible probabilities.
+ * @function vcdbMonteCarlo#configureActor
+ * @returns {object} - The combined draw and blend of actor.
+ */
+exports.configureActor = async function configureActor(){
+	var obj = {};
+	obj.overallP = [];
+	var p = [];
+	var pStandard = [];
+	var types = ['internal', 'external', 'partner'];
+	var props = ['days', 'months'];
+	var mt = new MersenneTwister();
+	//randomly select a day and month
+	obj.day = Math.floor(mt.rndHiRes()*(31-1)+1);
+	obj.month = Math.floor(mt.rndHiRes()*(12-1)+1);
+	//iterate types array
+	for(var x in props){
+		obj[props[x]+'P'] = [];
+		for(var i in types){
+			//retrieve probability of actor type for each day and month
+			obj[props[x]+types[i]] = await module.exports.postAggregationQuery('query', {
+				match: "{\"actor."+types[i]+"\": {\"$exists\": true}}",
+				group: "$timeline.incident."+props[x].slice(0, -1),
+				sort: {_id: 1}
+			});
+			//remove null values
+			obj[props[x]+types[i]].splice(0,1);
+			//compute probabilities of actor types using known frequency of occurence
+			obj[props[x]+types[i]] = await module.exports.computeProbability(obj[props[x]+types[i]]);
+			//calculate a probability, given the day and month, of the actor type
+			var index = obj[props[x]+types[i]].keys.indexOf(obj[props[x].slice(0, -1)]);
+			obj[props[x]+types[i]].prob = obj[props[x]+types[i]].p[index];
+			obj[props[x]+'P'].push(obj[props[x]+types[i]].prob);
+		} //end of for
+		obj.overallP.push(obj[props[x]+'P']);
+	} //end of for
+	//compute combined probabilities
+	for(var i in obj.overallP[0]){
+		var pOverall = 1;
+		for(x in obj.overallP){
+			var pOverall = 1;
+			pOverall *= obj.overallP[x][i];
+		}
+		p.push(pOverall);
+	}
+	//standardise probabilities
+	for(var i in p){
+		pStandard.push(p[i]/(_.sum(p)));
+	}
+	//return an object with random date and random actor type
+	if(debug) console.log((new Date()).toISOString()+" Random actor selected.");
+	return {actor: await module.exports.doRandom(types, pStandard), date: obj.day+'/'+obj.month};
+} //end of configureActor
+
+/**
+ * Draws a scenario together from possible probabilities.
+ * @function vcdbMonteCarlo#configureScenario
+ * @param {string} type - Actor type which was randomly derived.
+ * @returns {object} - The combined draw and blend of scenario.
+ */
+exports.configureScenario = async function configureScenario(actor, date){
+	var data = {};
+	data.type = actor;
+	data.date = date;
+	//get random actor attributes
+	var actors = await module.exports.getData('actors/'+actor);
+	actors.motives.p = await module.exports.computeProbability(actors.motives.motive, actors.motives.count);
+	data.motive = await module.exports.doRandom(actors.motives.p.keys, actors.motives.p.p);
+	actors.varieties.p = await module.exports.computeProbability(actors.varieties.variety, actors.varieties.count);
+	data.variety = await module.exports.doRandom(actors.varieties.p.keys, actors.varieties.p.p);
+	//generate an attack type
+	var attacksInitial = await module.exports.postAggregationQuery('attacks/misuse/query', {
+		match: "{\"actor."+actor+"\": {\"$exists\": true}}"
+	});
+	attacksInitial.types.p = await module.exports.computeProbability(attacksInitial.types.type, attacksInitial.types.count);
+	data.attackType = await module.exports.doRandom(attacksInitial.types.p.keys, attacksInitial.types.p.p);
+	//get random attack attributes
+	var attacks = await module.exports.postAggregationQuery('attacks/'+data.attackType+'/query', {
+		match: "{\"actor."+actor+"\": {\"$exists\": true}}"
+	});
+	attacks.varieties.p = await module.exports.computeProbability(attacks.varieties.variety, attacks.varieties.count);
+	data.attack = await module.exports.doRandom(attacks.varieties.p.keys, attacks.varieties.p.p);
+	attacks.vectors.p = await module.exports.computeProbability(attacks.vectors.vector, attacks.vectors.count);
+	data.vector = await module.exports.doRandom(attacks.vectors.p.keys, attacks.vectors.p.p);
+	attacks.assets.p = await module.exports.computeProbability(attacks.assets.asset, attacks.assets.count);
+	data.asset = await module.exports.doRandom(attacks.assets.p.keys, attacks.assets.p.p);
+	//get random impacts attributes
+	var impacts = await module.exports.postAggregationQuery('impacts/query', {
+		match: "{\"actor."+actor+"\": {\"$exists\": true}}"
+	});
+	impacts.varieties.p = await module.exports.computeProbability(impacts.varieties.variety, impacts.varieties.count);
+	data.impact = await module.exports.doRandom(impacts.varieties.p.keys, impacts.varieties.p.p);
+	impacts.ratings.p = await module.exports.computeProbability(impacts.ratings.rating, impacts.ratings.count);
+	data.impactRating = await module.exports.doRandom(impacts.ratings.p.keys, impacts.ratings.p.p);
+	//get random victims attributes
+	var victims = await module.exports.postAggregationQuery('victims/query', {
+		match: "{\"actor."+actor+"\": {\"$exists\": true}}"
+	});
+	victims.countries.p = await module.exports.computeProbability(victims.countries.country, victims.countries.count);
+	data.country = await module.exports.doRandom(victims.countries.p.keys, victims.countries.p.p);
+	victims.employeeNumbers.p = await module.exports.computeProbability(victims.employeeNumbers.employee_count, victims.employeeNumbers.count);
+	data.employee_count = await module.exports.doRandom(victims.employeeNumbers.p.keys, victims.employeeNumbers.p.p);
+	victims.industries.p = await module.exports.computeProbability(victims.industries.industry, victims.industries.count);
+	//keep trying to populate industry until defined
+	do{
+		data.industry = await module.exports.doRandom(victims.industries.p.keys, victims.industries.p.p);
+	} while(!data.industry);
+	if(debug) console.log((new Date()).toISOString()+" Successfully blended scenario.");
+	return data;
+}
+
+/**
+ * Draws a scenario together from possible probabilities.
+ * @function vcdbMonteCarlo#runTrials
+ * @param {number} times - The number of times to run the trial.
+ * @returns {number} - Success status.
+ */
+exports.runTrials = async function runTrials(times) {
+	for(var i=0; i<times; i++){
+		console.log(((i/times)*100).toFixed(2)+" % completed");
+		var type = await module.exports.configureActor();
+		var data = await module.exports.configureScenario(type.actor, type.date);
+		if(i===0) await fs.writeFile("data.json", "["+JSON.stringify(data)+", ");
+		else if(i===times-1) await fs.appendFile("data.json", JSON.stringify(data)+"]");
+		else await fs.appendFile("data.json", JSON.stringify(data)+", ");
+	}
+	console.log("100% complete");
+	return 1;
+}
+
+module.exports.runTrials(process.argv[2]);
