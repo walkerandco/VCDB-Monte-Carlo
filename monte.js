@@ -155,7 +155,7 @@ exports.computeProbability = async function computeProbability(keys, values){
 }//end of computeProbability function
 
 /**
- * Carries out a selection from the range of probabilities using Mersenne-Twiser 53-bit float random.
+ * Carries out a selection from the range of probabilities using Mersenne-Twister 53-bit float random.
  * @function vcdbMonteCarlo#doRandom
  * @param {array} keys - The array containing the keys mapped by index to probabilities.
  * @param {array} p - The array containing the keys mapped by index to probabilities.
