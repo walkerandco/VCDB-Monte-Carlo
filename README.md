@@ -14,7 +14,7 @@ To use this tool, ensure that verisdb-analyst is running in the background and s
 ```
 >node monte.js [number of times to run simulation] [url of verisdb-analyst] 
 ```
-This simulation requires considerable computing power to do quickly, so on a standard personal computer this will be slow.
+This simulation requires considerable computing power to do quickly, so on a standard personal computer this will be slow. ** You should ensure that you edit vcdbFactory.js in the factories folder of so that '''this.bypass = 1'''.
 
 # Comments and Contributions
 Please do feel free to submit a pull request or submit an issue with your comments. This package is maintained.
