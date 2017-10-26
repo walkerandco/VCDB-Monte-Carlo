@@ -76,7 +76,7 @@ exports.getData = function getData(path) {
 	return new Promise((resolve, reject) => {
 		try {
 		//get the vcdb data
-		request(process.argv[3]+path, (err, res, body) => {
+		request(process.env.VERIS+path, (err, res, body) => {
 			//parse raw data
 			if (err) reject(console.error((new Date()).toISOString()+" Error: "+err.message));
 			if (!err && res.statusCode == 200) {
@@ -103,7 +103,7 @@ exports.postAggregationQuery = function postAggregationQuery(path, query){
 	return new Promise((resolve, reject) => {
 		try {
 			request({
-			uri: process.argv[3]+path,
+			uri: process.env.VERIS+path,
 			method: 'POST',
 			body: query,
 			json: true
@@ -254,44 +254,55 @@ exports.configureScenario = async function configureScenario(actor, date){
 	var actors = await module.exports.getData('actors/'+actor);
 	actors.motives.p = await module.exports.computeProbability(actors.motives.motive, actors.motives.count);
 	data.motive = await module.exports.doRandom(actors.motives.p.keys, actors.motives.p.p);
+	data.motiveP = actors.motives.p.p[actors.motives.p.keys.indexOf(data.motive)];
 	actors.varieties.p = await module.exports.computeProbability(actors.varieties.variety, actors.varieties.count);
 	data.variety = await module.exports.doRandom(actors.varieties.p.keys, actors.varieties.p.p);
+	data.varietyP = actors.varieties.p.p[actors.varieties.p.keys.indexOf(data.variety)];
 	//generate an attack type
 	var attacksInitial = await module.exports.postAggregationQuery('attacks/misuse/query', {
 		match: "{\"actor."+actor+"\": {\"$exists\": true}}"
 	});
 	attacksInitial.types.p = await module.exports.computeProbability(attacksInitial.types.type, attacksInitial.types.count);
 	data.attackType = await module.exports.doRandom(attacksInitial.types.p.keys, attacksInitial.types.p.p);
+	data.attackTypeP = data.motiveP = attacksInitial.types.p.p[attacksInitial.types.p.keys.indexOf(data.attackType)];
 	//get random attack attributes
 	var attacks = await module.exports.postAggregationQuery('attacks/'+data.attackType+'/query', {
 		match: "{\"actor."+actor+"\": {\"$exists\": true}}"
 	});
 	attacks.varieties.p = await module.exports.computeProbability(attacks.varieties.variety, attacks.varieties.count);
 	data.attack = await module.exports.doRandom(attacks.varieties.p.keys, attacks.varieties.p.p);
+	data.attackP = attacks.varieties.p.p[attacks.varieties.p.keys.indexOf(data.attack)];
 	attacks.vectors.p = await module.exports.computeProbability(attacks.vectors.vector, attacks.vectors.count);
 	data.vector = await module.exports.doRandom(attacks.vectors.p.keys, attacks.vectors.p.p);
+	data.vectorP = attacks.vectors.p.p[attacks.vectors.p.keys.indexOf(data.vector)];
 	attacks.assets.p = await module.exports.computeProbability(attacks.assets.asset, attacks.assets.count);
 	data.asset = await module.exports.doRandom(attacks.assets.p.keys, attacks.assets.p.p);
+	data.assetP = attacks.assets.p.p[attacks.assets.p.keys.indexOf(data.asset)];
 	//get random impacts attributes
 	var impacts = await module.exports.postAggregationQuery('impacts/query', {
 		match: "{\"actor."+actor+"\": {\"$exists\": true}}"
 	});
 	impacts.varieties.p = await module.exports.computeProbability(impacts.varieties.variety, impacts.varieties.count);
 	data.impact = await module.exports.doRandom(impacts.varieties.p.keys, impacts.varieties.p.p);
+	data.impactP = impacts.varieties.p.p[impacts.varieties.p.keys.indexOf(data.impact)];
 	impacts.ratings.p = await module.exports.computeProbability(impacts.ratings.rating, impacts.ratings.count);
 	data.impactRating = await module.exports.doRandom(impacts.ratings.p.keys, impacts.ratings.p.p);
+	data.impactRatingP = impacts.ratings.p.p[impacts.ratings.p.keys.indexOf(data.impactRating)];
 	//get random victims attributes
 	var victims = await module.exports.postAggregationQuery('victims/query', {
 		match: "{\"actor."+actor+"\": {\"$exists\": true}}"
 	});
 	victims.countries.p = await module.exports.computeProbability(victims.countries.country, victims.countries.count);
 	data.country = await module.exports.doRandom(victims.countries.p.keys, victims.countries.p.p);
+	data.countryP = victims.countries.p.p[victims.countries.p.keys.indexOf(data.country)];
 	victims.employeeNumbers.p = await module.exports.computeProbability(victims.employeeNumbers.employee_count, victims.employeeNumbers.count);
 	data.employee_count = await module.exports.doRandom(victims.employeeNumbers.p.keys, victims.employeeNumbers.p.p);
+	data.employee_countP = victims.employeeNumbers.p.p[victims.employeeNumbers.p.keys.indexOf(data.employee_count)];
 	victims.industries.p = await module.exports.computeProbability(victims.industries.industry, victims.industries.count);
 	//keep trying to populate industry until defined
 	do{
 		data.industry = await module.exports.doRandom(victims.industries.p.keys, victims.industries.p.p);
+		data.industryP = victims.industries.p.p[victims.industries.p.keys.indexOf(data.industry)];
 	} while(!data.industry);
 	if(debug) console.log((new Date()).toISOString()+" Successfully blended scenario.");
 	return data;
