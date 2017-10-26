@@ -20,8 +20,10 @@ You must ensure that an environment variable VERIS is set for your verisdb-analy
 export VERIS="http://127.0.0.1/"
 ```
 
+If run successfully, data.json will be output to the same directory as monte.js, containing resultant data.
+
 This simulation requires considerable computing power to do quickly, so on a standard personal computer this will be slow.
-**You should ensure that you edit vcdbFactory.js in the factories folder of verisdb-analyst** so that ```this.bypass = 1```.
+**You should ensure that you edit vcdbFactory.js in the factories folder of verisdb-analyst** so that this.bypass = 1.
 
 # Comments and Contributions
 Please do feel free to submit a pull request or submit an issue with your comments. This package is maintained.
